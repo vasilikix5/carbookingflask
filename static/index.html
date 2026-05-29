@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Κράτηση Αυτοκινήτου (Flask)</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div class="container">
+        <h1>🚗 Σύστημα Κράτησης Αυτοκινήτου</h1>
+        
+        <div class="card">
+            <h2>Κάντε Κράτηση</h2>
+            <form id="bookingForm">
+                <label>Όνομα:</label>
+                <input type="text" id="name" required>
+
+                <label>Από:</label>
+                <input type="date" id="startDate" required>
+
+                <label>Έως:</label>
+                <input type="date" id="endDate" required>
+
+                <button type="submit">Κράτηση</button>
+            </form>
+            <p id="message"></p>
+        </div>
+
+        <div class="card">
+            <h2>Μη διαθέσιμες ημερομηνίες</h2>
+            <ul id="bookingsList"></ul>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('bookingForm');
+        const message = document.getElementById('message');
+        const list = document.getElementById('bookingsList');
+
+        async function fetchBookings() {
+            const res = await fetch('/api/bookings');
+            const bookings = await res.json();
+            list.innerHTML = '';
+            
+            if(bookings.length === 0) {
+                list.innerHTML = '<li>Όλες οι ημερομηνίες είναι ελεύθερες!</li>';
+                return;
+            }
+
+            bookings.forEach(b => {
+                const li = document.createElement('li');
+                li.innerHTML = `🔴 <strong>Κλεισμένο</strong> από ${b.startDate} έως ${b.endDate} (${b.name})`;
+                list.appendChild(li);
+            });
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('name').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            if (new Date(startDate) > new Date(endDate)) {
+                message.innerText = "Η ημερομηνία έναρξης δεν μπορεί να είναι μετά τη λήξη!";
+                message.style.color = "red";
+                return;
+            }
+
+            const res = await fetch('/api/bookings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, startDate, endDate })
+            });
+
+            const data = await res.json();
+            
+            if (res.ok) {
+                message.innerText = data.message;
+                message.style.color = "green";
+                form.reset();
+                fetchBookings();
+            } else {
+                message.innerText = data.error;
+                message.style.color = "red";
+            }
+        });
+
+        fetchBookings();
+    </script>
+</body>
+</html>
